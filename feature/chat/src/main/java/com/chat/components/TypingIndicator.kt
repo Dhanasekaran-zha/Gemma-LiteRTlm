@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -24,46 +25,91 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun TypingIndicator() {
-    val infiniteTransition = rememberInfiniteTransition(label = "typing")
-    val dotAlpha by infiniteTransition.animateFloat(
-            initialValue = 0.2f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                    animation = keyframes {
-                        durationMillis = 600
-                        0.2f at 0
-                        1f at 300
-                        0.2f at 600
-                    },
-                    repeatMode = RepeatMode.Reverse
-            ),
-            label = "alpha"
+
+    val transition = rememberInfiniteTransition(label = "typing")
+
+    val dot1 by transition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                0.2f at 0
+                1f at 300
+                0.2f at 900
+            }
+        ),
+        label = "dot1"
+    )
+
+    val dot2 by transition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                0.2f at 150
+                1f at 450
+                0.2f at 900
+            }
+        ),
+        label = "dot2"
+    )
+
+    val dot3 by transition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 900
+                0.2f at 300
+                1f at 600
+                0.2f at 900
+            }
+        ),
+        label = "dot3"
     )
 
     Row(
-            modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.Start
     ) {
+
         Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.medium
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 16.dp
+            ),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 1.dp
         ) {
-            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                repeat(3) { index ->
-                    Box(
-                            modifier = Modifier
-                                    .padding(horizontal = 2.dp)
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                                    .copy(alpha = if (index == 0) dotAlpha else 0.5f)
-                                    )
-                    )
-                }
+
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Dot(alpha = dot1)
+                Dot(alpha = dot2)
+                Dot(alpha = dot3)
             }
         }
     }
+}
+
+@Composable
+private fun Dot(alpha: Float) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 3.dp)
+            .size(8.dp)
+            .clip(CircleShape)
+            .background(
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+            )
+    )
 }

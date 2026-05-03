@@ -33,7 +33,7 @@ class ChatRepositoryImpl @Inject constructor(
         try {
             val modelFile = File(
                     context.getExternalFilesDir(null),
-                    "Qwen3-0.6B.litertlm"
+                    "gemma-4-E2B-it.litertlm"
             )
 
             if (!modelFile.exists()) {
@@ -48,12 +48,10 @@ class ChatRepositoryImpl @Inject constructor(
                     cacheDir = context.cacheDir.absolutePath,
             )
 
-            // Example: Disabling channels to avoid 'thinking' output
             val conversationConfig = ConversationConfig(channels = emptyList())
 
             engine = Engine(engineConfig).also { it.initialize() }
 
-            // ✅ Create ONE conversation and reuse it
             conversation = engine?.createConversation(conversationConfig = conversationConfig)
 
             Result.success(Unit)
@@ -83,7 +81,6 @@ class ChatRepositoryImpl @Inject constructor(
                             trySend(message.toString())
                         }
 
-                // ✅ Mark completion
                 isGenerating = false
                 close()
 
