@@ -33,7 +33,7 @@ class ChatRepositoryImpl @Inject constructor(
         try {
             val modelFile = File(
                     context.getExternalFilesDir(null),
-                    "gemma-4-E2B-it.litertlm"
+                    "gemma3-1b-it-int4.litertlm"
             )
 
             if (!modelFile.exists()) {
@@ -44,7 +44,7 @@ class ChatRepositoryImpl @Inject constructor(
 
             val engineConfig = EngineConfig(
                     modelPath = modelFile.absolutePath,
-                    backend = Backend.GPU(),
+                    backend = Backend.CPU(),
                     cacheDir = context.cacheDir.absolutePath,
             )
 

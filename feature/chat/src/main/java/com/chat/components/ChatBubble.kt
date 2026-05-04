@@ -8,6 +8,10 @@ import androidx.compose.ui.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chat.ui.chat.ChatMessage
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun ChatBubble(message: ChatMessage) {
@@ -57,7 +61,7 @@ fun ChatBubble(message: ChatMessage) {
                 shadowElevation = 1.dp
             ) {
                 Text(
-                    text = message.content,
+                    text = parseMarkdown(message.content),
                     modifier = Modifier.padding(
                         horizontal = 14.dp,
                         vertical = 10.dp
@@ -67,6 +71,34 @@ fun ChatBubble(message: ChatMessage) {
                     lineHeight = 20.sp
                 )
             }
+        }
+    }
+}
+
+fun parseMarkdown(text: String): AnnotatedString {
+    val regex = "\\*\\*(.*?)\\*\\*".toRegex()
+
+    return buildAnnotatedString {
+        var lastIndex = 0
+
+        regex.findAll(text).forEach { match ->
+            val start = match.range.first
+            val end = match.range.last
+
+            // Normal text before bold
+            append(text.substring(lastIndex, start))
+
+            // Bold text
+            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+            append(match.groupValues[1])
+            pop()
+
+            lastIndex = end + 1
+        }
+
+        // Remaining text
+        if (lastIndex < text.length) {
+            append(text.substring(lastIndex))
         }
     }
 }
