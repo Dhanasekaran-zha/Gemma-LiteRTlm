@@ -7,11 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.chat.ui.chat.ChatMessage
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import com.domain.model.ChatMessage
 
 @Composable
 fun ChatBubble(message: ChatMessage) {

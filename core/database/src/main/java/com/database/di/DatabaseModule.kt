@@ -3,7 +3,7 @@ package com.database.di
 import android.content.Context
 import androidx.room.Room
 import com.database.AppDatabase
-import com.database.dao.EmployeeDao
+import com.database.dao.ChatDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,12 +21,12 @@ object DatabaseModule {
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
-            "modern_app_db"
+            "gemma_edge"
         ).build()
     }
 
     @Provides
-    fun provideEmployeeDao(database: AppDatabase): EmployeeDao {
-        return database.employeeDao()
+    fun provideChatDao(database: AppDatabase): ChatDao {
+        return database.chatDao()
     }
 }
