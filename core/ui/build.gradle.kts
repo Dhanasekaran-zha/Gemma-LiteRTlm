@@ -46,4 +46,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
+    implementation(project(":domain"))
+    api(project(":core:utils"))
+    api(libs.coil.compose)
 }

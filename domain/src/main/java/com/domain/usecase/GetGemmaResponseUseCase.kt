@@ -1,17 +1,19 @@
 package com.domain.usecase
 
+import android.graphics.Bitmap
 import com.domain.model.ChatMessage
 import com.domain.model.ChatSession
 import com.domain.repository.ChatRepository
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 import javax.inject.Inject
 
 class GetGemmaResponseUseCase @Inject constructor(
         private val repository: ChatRepository
 ) {
 
-    operator fun invoke(prompt: String, sessionId: Long?): Flow<String> {
-        return repository.generateResponse(prompt = prompt, sessionId = sessionId)
+    operator fun invoke(prompt: String, image: File?, sessionId: Long?): Flow<String> {
+        return repository.generateResponse(prompt = prompt, image = image, sessionId = sessionId)
     }
 
     suspend fun initializeEngine(): Result<Unit> {

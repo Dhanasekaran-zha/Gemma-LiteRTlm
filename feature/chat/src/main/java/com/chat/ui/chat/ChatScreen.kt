@@ -1,5 +1,6 @@
 package com.chat.ui.chat
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
@@ -36,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.chat.components.ChatBubble
@@ -43,18 +46,22 @@ import com.chat.components.ChatHistoryDrawer
 import com.chat.components.ChatInputBar
 import com.chat.components.TypingIndicator
 import com.domain.model.ChatMessage
+import com.utils.image.ImageUtils.toCompressedFile
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-        viewModel: ChatViewModel = hiltViewModel()
+        viewModel: ChatViewModel = hiltViewModel(),
+        onSettingsClicked: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
     var inputText by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -89,6 +96,18 @@ fun ChatScreen(
                                         }
                                 ) {
                                     Icon(Icons.Default.Menu, contentDescription = "Menu")
+                                }
+                            },
+                            actions = {
+                                IconButton(
+                                        onClick = {
+                                            onSettingsClicked()
+                                        }
+                                ) {
+                                    Icon(
+                                            Icons.Default.Settings,
+                                            contentDescription = "Settings"
+                                    )
                                 }
                             }
                     )
@@ -157,17 +176,22 @@ fun ChatScreen(
                                 }
                             }
 
-                            // 👇 Input bar is now INSIDE the Column — no more Box/align tricks
                             ChatInputBar(
                                     text = inputText,
                                     onTextChange = { inputText = it },
                                     onSend = {
                                         if (inputText.isNotBlank()) {
-                                            viewModel.sendMessage(inputText.trim())
+                                            viewModel.sendMessage(userPrompt = inputText.trim(), image = selectedImageUri?.toCompressedFile(context))
                                             inputText = ""
+                                            selectedImageUri = null
                                         }
                                     },
-                                    enabled = uiState.status != ChatStatus.LoadingModel
+                                    onImageSelected = { uri ->
+                                        selectedImageUri = uri
+                                    },
+                                    enabled = uiState.status != ChatStatus.LoadingModel,
+                                    selectedImageUri = selectedImageUri,
+                                    onCancelImage = { selectedImageUri = null }
                             )
                         }
                     }

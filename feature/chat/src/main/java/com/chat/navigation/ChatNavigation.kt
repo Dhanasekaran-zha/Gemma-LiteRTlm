@@ -9,6 +9,8 @@ import com.ui.navigation.Screen
 
 fun NavGraphBuilder.chatGraph(navController: NavHostController) {
     composable(route = Screen.Chat.route) {
-        ChatScreen()
+        ChatScreen(onSettingsClicked = {
+            navController.navigate(Screen.Settings.route)
+        })
     }
 }

@@ -1,5 +1,6 @@
 [versions]
 agp = "9.1.1"
+coilCompose = "2.7.0"
 coreKtx = "1.18.0"
 javaxInject = "1"
 junit = "4.13.2"
@@ -33,6 +34,7 @@ animationCore = "1.11.0"
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 javax-inject = { module = "javax.inject:javax.inject", version.ref = "javaxInject" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

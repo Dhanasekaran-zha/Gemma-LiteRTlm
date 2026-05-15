@@ -9,6 +9,8 @@ import com.ui.navigation.Screen
 
 fun NavGraphBuilder.settingsGraph(navController: NavHostController) {
     composable(route = Screen.Settings.route) {
-        SettingsScreen()
+        SettingsScreen(
+                onBackClick = { navController.popBackStack() }
+        )
     }
 }

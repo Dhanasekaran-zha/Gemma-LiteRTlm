@@ -1,7 +1,9 @@
 package com.domain.di
 
 import com.domain.repository.ChatRepository
+import com.domain.repository.SettingsRepository
 import com.domain.usecase.GetGemmaResponseUseCase
+import com.domain.usecase.ThemeUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,5 +20,9 @@ object UseCaseModule {
         return GetGemmaResponseUseCase(repository)
     }
 
-    // As you add more UseCases (e.g., GetClientsUseCase), provide them here.
+    @Provides
+    @Singleton
+    fun provideThemeUseCase(repository: SettingsRepository): ThemeUseCase {
+        return ThemeUseCase(repository)
+    }
 }

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,10 +43,9 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun sendMessage(userPrompt: String) {
+    fun sendMessage(userPrompt: String, image: File?) {
         if (userPrompt.isBlank()) return
 
-        // Use existing sessionId from state (null only on very first message)
         val currentSessionId = _uiState.value.sessionId
 
         val userMessage = ChatMessage(content = userPrompt, isFromUser = true)
@@ -56,7 +56,7 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                getGemmaResponseUseCase(userPrompt, currentSessionId)
+                getGemmaResponseUseCase(userPrompt, image, currentSessionId)
                         .onCompletion { cause ->
                             if (cause == null) { // Only on clean completion
                                 val resolvedSessionId = currentSessionId

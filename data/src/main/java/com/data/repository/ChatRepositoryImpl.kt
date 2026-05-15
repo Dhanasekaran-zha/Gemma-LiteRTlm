@@ -1,6 +1,7 @@
 package com.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
 import com.database.dao.ChatDao
 import com.database.entities.ChatMessageEntity
 import com.database.entities.ChatSessionEntity
@@ -8,10 +9,13 @@ import com.domain.model.ChatMessage
 import com.domain.model.ChatSession
 import com.domain.repository.ChatRepository
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -31,10 +35,8 @@ class ChatRepositoryImpl @Inject constructor(
 
     private var engine: Engine? = null
     private var conversation: Conversation? = null
-
     private var currentSessionId: Long? = null
 
-    // Prevent multiple parallel generations (important for LiteRTLM)
     @Volatile
     private var isGenerating = false
 
@@ -54,6 +56,7 @@ class ChatRepositoryImpl @Inject constructor(
             val engineConfig = EngineConfig(
                     modelPath = modelFile.absolutePath,
                     backend = Backend.CPU(),
+                    visionBackend = Backend.GPU(),
                     cacheDir = context.cacheDir.absolutePath,
             )
 
@@ -69,49 +72,62 @@ class ChatRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun generateResponse(prompt: String, sessionId: Long?): Flow<String> = callbackFlow {
-
+    override fun generateResponse(prompt: String, image: File?, sessionId: Long?): Flow<String> = callbackFlow {
         if (isGenerating) {
             close(IllegalStateException("Already generating a response"))
             return@callbackFlow
         }
-
-        val convo = conversation ?: run {
-            close(IllegalStateException("Conversation not initialized"))
-            return@callbackFlow
-        }
-
         isGenerating = true
 
         val job = launch {
             try {
-                currentSessionId = sessionId ?: chatDao.insertSession(
+                if (sessionId != null && currentSessionId != sessionId) {
+                    conversation = createConversationWithHistory(sessionId)
+                    currentSessionId = sessionId
+                }
+
+                val convo = conversation ?: throw IllegalStateException("Conversation not initialized")
+
+                val targetSessionId = sessionId ?: chatDao.insertSession(
                         ChatSessionEntity(title = prompt.take(20))
-                )
-                chatDao.insertMessage(ChatMessageEntity(sessionId = currentSessionId!!, content = prompt, isFromUser = true))
-
-                val responseMessage = StringBuilder()
-
-                convo.sendMessageAsync(prompt)
-                        .collect { message ->
-                            responseMessage.append(message.toString())
-                            trySend(message.toString())
-                        }
+                ).also { currentSessionId = it }
 
                 chatDao.insertMessage(
+                        ChatMessageEntity(sessionId = targetSessionId, content = prompt, isFromUser = true)
+                )
+
+                val responseBuilder = StringBuilder()
+                val userMessage =
+                        if (image != null) {
+                            Message.user(
+                                    Contents.of(
+                                            Content.Text(prompt),
+                                            Content.ImageFile(image.absolutePath)
+                                    )
+                            )
+
+                        } else {
+
+                            Message.user(text = prompt)
+                        }
+                convo.sendMessageAsync(userMessage).collect { partialMessage ->
+                    val text = partialMessage.toString()
+                    responseBuilder.append(text)
+                    trySend(text)
+                }
+                chatDao.insertMessage(
                         ChatMessageEntity(
-                                sessionId = currentSessionId!!,
-                                content = responseMessage.toString(),
+                                sessionId = targetSessionId,
+                                content = responseBuilder.toString(),
                                 isFromUser = false
                         )
                 )
 
+            } catch (e: Exception) {
+                close(e)
+            } finally {
                 isGenerating = false
                 close()
-
-            } catch (e: Exception) {
-                isGenerating = false
-                close(e)
             }
         }
 
@@ -119,7 +135,6 @@ class ChatRepositoryImpl @Inject constructor(
             job.cancel()
             isGenerating = false
         }
-
     }.flowOn(Dispatchers.Default)
 
     override fun release() {
@@ -159,6 +174,25 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun getCurrentSessionId(): Long? {
         return currentSessionId
+    }
+
+    private suspend fun createConversationWithHistory(
+            sessionId: Long
+    ): Conversation {
+        conversation?.close()
+        val history = chatDao
+                .getMessagesForSessionOnce(sessionId)
+                .reversed()
+
+        val initialMessages = history.map { entity ->
+            if (entity.isFromUser) Message.user(text = entity.content) else Message.model(text = entity.content)
+        }
+
+        return engine!!.createConversation(
+                ConversationConfig(
+                        initialMessages = initialMessages,
+                )
+        )
     }
 
 }
