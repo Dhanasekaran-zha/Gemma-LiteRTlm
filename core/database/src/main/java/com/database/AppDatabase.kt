@@ -7,9 +7,9 @@ import com.database.entities.ChatMessageEntity
 import com.database.entities.ChatSessionEntity
 
 @Database(
-        entities = [ChatSessionEntity::class, ChatMessageEntity::class],
-        version = 1,
-        exportSchema = false
+    entities = [ChatSessionEntity::class, ChatMessageEntity::class],
+    version = 2,
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao

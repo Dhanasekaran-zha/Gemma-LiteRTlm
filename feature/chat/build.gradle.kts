@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(project(":domain"))
     implementation(project(":core:ui"))
+    implementation(project(":core:utils"))
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -47,4 +48,9 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    // Testing
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }

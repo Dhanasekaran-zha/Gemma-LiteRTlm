@@ -24,13 +24,17 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,92 +42,97 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.chat.components.ChatBubble
-import com.chat.components.ChatHistoryDrawer
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.chat.components.ChatInputBar
+import com.chat.components.ChatHistoryDrawer
+import com.chat.components.ChatMessageItem
 import com.chat.components.TypingIndicator
 import com.domain.model.ChatMessage
-import com.utils.image.ImageUtils.toCompressedFile
+import com.domain.model.GenerationState
+import com.domain.model.MessageRole
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-        viewModel: ChatViewModel = hiltViewModel(),
-        onSettingsClicked: () -> Unit
+    viewModel: ChatViewModel = hiltViewModel(),
+    onSettingsClicked: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
     var inputText by remember { mutableStateOf("") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    val context = LocalContext.current
 
-    LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.lastIndex)
+    // Derive scroll trigger to avoid recomposing entire screen
+    val messageCount by remember { derivedStateOf { uiState.messages.size } }
+    val isGenerating by remember { derivedStateOf { uiState.status == ChatStatus.Generating } }
+
+    LaunchedEffect(messageCount, uiState.streamingText) {
+        val totalItems = messageCount +
+            (if (isGenerating && uiState.streamingText.isNotEmpty()) 1 else 0) +
+            (if (isGenerating) 1 else 0)
+        if (totalItems > 0) {
+            listState.animateScrollToItem(totalItems - 1)
         }
     }
 
     ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                ChatHistoryDrawer(
-                        sessions = uiState.sessions,
-                        onSessionClick = { sessionId ->
-                            viewModel.loadSession(sessionId)
-                            drawerScope.launch { drawerState.close() }
-                        },
-                        onNewChatClick = {
-                            viewModel.startNewChat()
-                            drawerScope.launch { drawerState.close() }
-                        }
-                )
-            }
+        drawerState = drawerState,
+        drawerContent = {
+            ChatHistoryDrawer(
+                sessions = uiState.sessions,
+                onSessionClick = { sessionId ->
+                    viewModel.loadSession(sessionId)
+                    drawerScope.launch { drawerState.close() }
+                },
+                onNewChatClick = {
+                    viewModel.startNewChat()
+                    drawerScope.launch { drawerState.close() }
+                }
+            )
+        }
     ) {
         Scaffold(
-                topBar = {
-                    CenterAlignedTopAppBar(
-                            title = { Text("Gemma-Edge") },
-                            navigationIcon = {
-                                IconButton(
-                                        onClick = {
-                                            drawerScope.launch { drawerState.open() }
-                                        }
-                                ) {
-                                    Icon(Icons.Default.Menu, contentDescription = "Menu")
-                                }
-                            },
-                            actions = {
-                                IconButton(
-                                        onClick = {
-                                            onSettingsClicked()
-                                        }
-                                ) {
-                                    Icon(
-                                            Icons.Default.Settings,
-                                            contentDescription = "Settings"
-                                    )
-                                }
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Gemma-Edge") },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = {
+                                drawerScope.launch { drawerState.open() }
                             }
-                    )
-                }
+                        ) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                onSettingsClicked()
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Settings"
+                            )
+                        }
+                    }
+                )
+            }
         ) { paddingValues ->
             Box(
-                    modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
 
                 when (uiState.status) {
                     ChatStatus.LoadingModel -> {
                         Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator()
@@ -135,63 +144,87 @@ fun ChatScreen(
 
                     else -> {
                         Column(
-                                modifier = Modifier
-                                        .fillMaxSize()
-                                        .imePadding()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .imePadding()
                         ) {
                             LazyColumn(
-                                    modifier = Modifier
-                                            .fillMaxWidth()
-                                            .weight(1f)          // takes remaining space
-                                            .wrapContentHeight(  // but aligns content to bottom like WhatsApp
-                                                    align = Alignment.Bottom,
-                                                    unbounded = false
-                                            ),
-                                    state = listState,
-                                    contentPadding = PaddingValues(
-                                            start = 12.dp,
-                                            end = 12.dp,
-                                            top = 8.dp,
-                                            bottom = 8.dp   // 👈 no need for 90.dp anymore
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .wrapContentHeight(
+                                        align = Alignment.Bottom,
+                                        unbounded = false
                                     ),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                state = listState,
+                                contentPadding = PaddingValues(
+                                    start = 12.dp,
+                                    end = 12.dp,
+                                    top = 8.dp,
+                                    bottom = 8.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                items(uiState.messages) { message ->
-                                    ChatBubble(message)
+                                items(
+                                    items = uiState.messages,
+                                    key = { msg -> msg.id.takeIf { it != 0L } ?: msg.hashCode() }
+                                ) { message ->
+                                    ChatMessageItem(message)
                                 }
 
-                                if (uiState.status == ChatStatus.Generating && uiState.streamingText.isNotEmpty()) {
-                                    item {
-                                        ChatBubble(
-                                                ChatMessage(
-                                                        content = uiState.streamingText,
-                                                        isFromUser = false
-                                                )
+                                // Streaming model response
+                                if (isGenerating && uiState.streamingText.isNotEmpty()) {
+                                    item(key = "streaming_response") {
+                                        ChatMessageItem(
+                                            ChatMessage(
+                                                role = MessageRole.MODEL,
+                                                text = uiState.streamingText,
+                                                generationState = GenerationState.STREAMING
+                                            )
                                         )
                                     }
                                 }
 
-                                if (uiState.status == ChatStatus.Generating) {
-                                    item { TypingIndicator() }
+                                // Typing indicator
+                                if (isGenerating) {
+                                    item(key = "typing_indicator") {
+                                        TypingIndicator()
+                                    }
+                                }
+                            }
+
+                            // Error snackbar
+                            if (uiState.status is ChatStatus.Error) {
+                                Snackbar(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                    action = {
+                                        TextButton(onClick = { viewModel.dismissError() }) {
+                                            Text("Dismiss")
+                                        }
+                                    },
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                ) {
+                                    Text((uiState.status as ChatStatus.Error).message)
                                 }
                             }
 
                             ChatInputBar(
-                                    text = inputText,
-                                    onTextChange = { inputText = it },
-                                    onSend = {
-                                        if (inputText.isNotBlank()) {
-                                            viewModel.sendMessage(userPrompt = inputText.trim(), image = selectedImageUri?.toCompressedFile(context))
-                                            inputText = ""
-                                            selectedImageUri = null
-                                        }
-                                    },
-                                    onImageSelected = { uri ->
-                                        selectedImageUri = uri
-                                    },
-                                    enabled = uiState.status != ChatStatus.LoadingModel,
-                                    selectedImageUri = selectedImageUri,
-                                    onCancelImage = { selectedImageUri = null }
+                                text = inputText,
+                                onTextChange = { inputText = it },
+                                onSend = {
+                                    if (inputText.isNotBlank() || uiState.pendingImageUri != null) {
+                                        viewModel.sendMessage(userPrompt = inputText.trim())
+                                        inputText = ""
+                                    }
+                                },
+                                onImageSelected = { uri ->
+                                    viewModel.onImageSelected(uri)
+                                },
+                                enabled = uiState.status != ChatStatus.LoadingModel
+                                    && uiState.status != ChatStatus.SavingImage,
+                                selectedImageUri = uiState.pendingImageUri?.let { Uri.parse("file://$it") },
+                                onCancelImage = { viewModel.clearPendingImage() }
                             )
                         }
                     }
